@@ -60,20 +60,12 @@ generate_model <- function(obj.fun, des, surr.km, control.iters=10, control.crit
   return(list(obj.fun=obj.fun, learner=surr.km, des=des, control=control))
 }
 
-
-run_model <- function(obj.fun, design, learner, control, show.info=FALSE, multi_iters= c(1L, 2L, 10L), pause=FALSE){
+run_model <- function(model, show.info=FALSE, 
+                      multi_iters= c(1L, 2L, 10L), pause=FALSE, points.per.dim=50) {
   # Runs model for _ iterations and displays plots
   
-  run = exampleRun(fun=obj.fun, design=design, learner=learner, control=control, show.info, points.per.dim)
-  plotExampleRun(run, iters=multi_iters, pause)
-  
-  return(run)
-}
-
-run_model <- function(obj.fun, design, learner, control, show.info=FALSE, multi_iters= c(1L, 2L, 10L), pause=FALSE, points.per.dim=50) {
-  # Runs model for _ iterations and displays plots
-  
-  run = exampleRun(fun=obj.fun, design=design, learner=learner, control=control, show.info=show.info, points.per.dim=points.per.dim)
+  run = exampleRun(fun=model$obj.fun, design=model$des, learner=model$learner, control=model$control,
+                   show.info=show.info, points.per.dim=points.per.dim)
   plotExampleRun(run, iters=multi_iters, pause=pause)
   
   return(run)
@@ -100,10 +92,12 @@ print(fun.cosine)
 
 # Random LHS initial design parameters
 des.n = 5
-des.fun = lhs::randomLHS
-  # Random LHS Cosine mixture function generate
 
-des.cosine = generateDesign(des.n, par.set = getParamSet(fun.cosine), des.fun)
+  # Random LHS Cosine mixture function generate
+des.cosine_random = generateDesign(des.n, par.set = getParamSet(fun.cosine), randomLHS)
+
+  # Maximin LHS Cosine mixture 
+des.cosine_maximin = generateDesign(des.n, par.set = getParamSet(fun.cosine), maximinLHS)
 
 # Kriging model (surrogate) constructor
 
@@ -116,13 +110,12 @@ surr.km = makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", con
 
 ```{r}
 
-model_1 = generate_model(fun.cosine, des.cosine, surr.km, 
+model_1 = generate_model(fun.cosine, des.cosine_random, surr.km, 
                          control.iters=10, control.crit=makeMBOInfillCritEI())
 
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
 
-run_1 = run_model(obj.fun=model_1$obj.fun, design=model_1$des, learner=model_1$learner,
-                  control=model_1$control, multi_iters=10L)
+run_1 = run_model(model=model_1, multi_iters=10L)
 
 results_1 = get_results(run_1)
 results_1
@@ -133,13 +126,12 @@ results_1
 
 ```{r}
 
-model_2 = generate_model(fun.cosine, des.cosine, surr.km,
+model_2 = generate_model(fun.cosine, des.cosine_random, surr.km,
                          control.iters=10, control.crit=makeMBOInfillCritCB())
 
 
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
-run_2 = run_model(obj.fun=model_2$obj.fun, design=model_2$des, learner=model_2$learner, 
-                  control=model_2$control, multi_iters=10L)
+run_2 = run_model(model=model_2, multi_iters=10L)
 
 results_2 = get_results(run_2)
 results_2
@@ -149,12 +141,11 @@ results_2
 ## 3. EQI, Random
 
 ```{r}
-model_3 = generate_model(fun.cosine, des.cosine, surr.km,
+model_3 = generate_model(fun.cosine, des.cosine_random, surr.km,
                          control.iters=10, control.crit=makeMBOInfillCritAEI())
 
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
-run_3 = run_model(obj.fun=model_3$obj.fun, design=model_3$des, learner=model_3$learner, 
-                  control=model_3$control, multi_iters=10L)
+run_3 = run_model(model=model_3, multi_iters=10L)
 
 results_3 = get_results(run_3)
 results_3
@@ -162,6 +153,49 @@ results_3
 ```
 
 ## 4. EI, Maximin
+
+```{r}
+
+model_4 = generate_model(fun.cosine, des.cosine_maximin, surr.km, 
+                         control.iters=10, control.crit=makeMBOInfillCritEI())
+
+# optional: define multi_iters here. default is c(1L, 2L, 10L)
+
+run_4 = run_model(model=model_4, multi_iters=10L)
+
+results_4 = get_results(run_4)
+results_4
+
+```
+
+## 5. CB, Maximin
+
+```{r}
+
+model_5 = generate_model(fun.cosine, des.cosine_random, surr.km,
+                         control.iters=10, control.crit=makeMBOInfillCritCB())
+
+
+# optional: define multi_iters here. default is c(1L, 2L, 10L)
+run_5 = run_model(model=model_5, multi_iters=10L)
+
+results_5 = get_results(run_5)
+results_5
+
+```
+
+
+## 6. AEI, Maximin
+
+
+## 7. EI, Optimum
+
+
+## 8. CB, Optimum
+
+
+## 9. AEI, Optimum
+
 
 
 
