@@ -13,6 +13,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(mlrMBO)
 library(lhs)
+library(smoof)
+library(ggplot2)
+library(DiceKriging)
 ```
 
 1. Define objective function and its parameters using the package smoof.
@@ -33,7 +36,7 @@ library(lhs)
 ## General function
 
 ```{r}
-# seperately generate obj.fun, surr.km (use makeLearner), des (LHS, random, uniform)
+# separately generate obj.fun, surr.km (use makeLearner), des (LHS, random, uniform)
 
 
 generate_model <- function(obj.fun, des, surr.km, control.iters=10, control.crit){
@@ -87,57 +90,80 @@ get_best <- function(run){
 
 # Table 1: Kriging+Cosine Mixture Function (1D)
 
+```{r}
+
+# Cosine Mixture function
+fun.cosine = makeCosineMixtureFunction(1)
+fun.cosine = convertToMinimization(fun.cosine)
+print(autoplot(fun.cosine, show.optimum = TRUE))
+print(fun.cosine)
+
+# Random LHS initial design parameters
+des.n = 5
+des.fun = lhs::randomLHS
+  # Random LHS Cosine mixture function generate
+
+des.cosine = generateDesign(des.n, par.set = getParamSet(fun.cosine), des.fun)
+
+# Kriging model (surrogate) constructor
+
+surr.km = makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", control = list(trace = FALSE))
+
+```
+
+
 ## 1. EI, Random
 
 ```{r}
-obj.fun = makeCosineMixtureFunction(1)
-obj.fun = convertToMinimization(obj.fun)
-print(autoplot(obj.fun, show.optimum = TRUE))
-print(obj.fun)
 
-des.n = 5
-des.fun = lhs::randomLHS
-des = generateDesign(des.n, par.set = getParamSet(obj.fun), des.fun)
-
-
-surr.km_1 = makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", control = list(trace = FALSE))
-
-model_1 = generate_model(obj.fun, des, surr.km, control.iters=10, control.crit=makeMBOInfillCritEI())
+model_1 = generate_model(fun.cosine, des.cosine, surr.km, 
+                         control.iters=10, control.crit=makeMBOInfillCritEI())
 
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
 
-run_1 = run_model(obj.fun=obj.fun, design=model_1$des, learner=surr.km, control=model_1$control,
-                  multi_iters=10L)
+run_1 = run_model(obj.fun=model_1$obj.fun, design=model_1$des, learner=model_1$learner,
+                  control=model_1$control, multi_iters=10L)
 
 results_1 = get_results(run_1)
 results_1
 
 ```
+
 ## 2. CB, Random
 
 ```{r}
-obj.fun = makeCosineMixtureFunction(1)
-obj.fun = convertToMinimization(obj.fun)
-print(autoplot(obj.fun, show.optimum = TRUE))
-print(obj.fun)
 
-des.n = 5
-des.fun = lhs::randomLHS
-des = generateDesign(des.n, par.set = getParamSet(obj.fun), des.fun)
-
-surr.km = makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", control = list(trace = FALSE))
-
-model_3 = generate_model(obj.fun, des, surr.km, control.iters=10, control.crit=makeMBOInfillCritCB())
+model_2 = generate_model(fun.cosine, des.cosine, surr.km,
+                         control.iters=10, control.crit=makeMBOInfillCritCB())
 
 
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
+run_2 = run_model(obj.fun=model_2$obj.fun, design=model_2$des, learner=model_2$learner, 
+                  control=model_2$control, multi_iters=10L)
 
-run_3 = run_model(obj.fun=obj.fun, design=model_3$des, learner=surr.km, control=model_3$control,
-                  multi_iters=10L)
+results_2 = get_results(run_2)
+results_2
+```
+
+
+## 3. EQI, Random
+
+```{r}
+model_3 = generate_model(fun.cosine, des.cosine, surr.km,
+                         control.iters=10, control.crit=makeMBOInfillCritAEI())
+
+# optional: define multi_iters here. default is c(1L, 2L, 10L)
+run_3 = run_model(obj.fun=model_3$obj.fun, design=model_3$des, learner=model_3$learner, 
+                  control=model_3$control, multi_iters=10L)
 
 results_3 = get_results(run_3)
 results_3
+
 ```
+
+## 4. EI, Maximin
+
+
 
 # Table 2: Kriging + Branin (2D)
 
