@@ -16,6 +16,8 @@ library(lhs)
 library(smoof)
 library(ggplot2)
 library(DiceKriging)
+library(gridExtra)
+library(GGally)
 ```
 
 1. Define objective function and its parameters using the package smoof.
@@ -33,13 +35,43 @@ library(DiceKriging)
 
 6. Visualize runs: exampleRun, plotExampleRun
 
-## General function
+## General function and parameters
+
+```{r}
+
+# Cosine Mixture function
+fun.cosine = makeCosineMixtureFunction(1)
+fun.cosine = convertToMinimization(fun.cosine)
+print(autoplot(fun.cosine, show.optimum = TRUE))
+print(fun.cosine)
+
+# Number of run iterations
+multi_iters = 10L
+control_iters = 10L
+
+  ### !!! NOTE: control_iters > multi_iters or things will not plot !!!
+
+# Random LHS initial design parameters
+des.n = 5
+
+  # Random LHS Cosine mixture function generate
+des.cosine_random = generateDesign(des.n, par.set = getParamSet(fun.cosine), randomLHS)
+
+  # Maximin LHS Cosine mixture 
+des.cosine_maximin = generateDesign(des.n, par.set = getParamSet(fun.cosine), maximinLHS)
+
+# Kriging model (surrogate) constructor
+
+surr.km = makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", control = list(trace = FALSE))
+
+```
+
 
 ```{r}
 # separately generate obj.fun, surr.km (use makeLearner), des (LHS, random, uniform)
 
 
-generate_model <- function(obj.fun, des, surr.km, control.iters=10, control.crit){
+generate_model <- function(obj.fun, des, surr.km, control.iters=control.iters, control.crit){
   # Generates model but doesn't run or visualize
   # obj.fun: objective function ex. makeBraninFunction()
   # des required variables:
@@ -82,40 +114,17 @@ get_best <- function(run){
 
 # Table 1: Kriging+Cosine Mixture Function (1D)
 
-```{r}
-
-# Cosine Mixture function
-fun.cosine = makeCosineMixtureFunction(1)
-fun.cosine = convertToMinimization(fun.cosine)
-print(autoplot(fun.cosine, show.optimum = TRUE))
-print(fun.cosine)
-
-# Random LHS initial design parameters
-des.n = 5
-
-  # Random LHS Cosine mixture function generate
-des.cosine_random = generateDesign(des.n, par.set = getParamSet(fun.cosine), randomLHS)
-
-  # Maximin LHS Cosine mixture 
-des.cosine_maximin = generateDesign(des.n, par.set = getParamSet(fun.cosine), maximinLHS)
-
-# Kriging model (surrogate) constructor
-
-surr.km = makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", control = list(trace = FALSE))
-
-```
-
 
 ## 1. EI, Random
 
 ```{r}
 
 model_1 = generate_model(fun.cosine, des.cosine_random, surr.km, 
-                         control.iters=10, control.crit=makeMBOInfillCritEI())
+                         control.iters=control_iters, control.crit=makeMBOInfillCritEI())
 
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
 
-run_1 = run_model(model=model_1, multi_iters=10L)
+run_1 = run_model(model=model_1, multi_iters=multi_iters)
 
 results_1 = get_results(run_1)
 results_1
@@ -127,25 +136,25 @@ results_1
 ```{r}
 
 model_2 = generate_model(fun.cosine, des.cosine_random, surr.km,
-                         control.iters=10, control.crit=makeMBOInfillCritCB())
+                         control.iters=control_iters, control.crit=makeMBOInfillCritCB())
 
 
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
-run_2 = run_model(model=model_2, multi_iters=10L)
+run_2 = run_model(model=model_2, multi_iters=multi_iters)
 
 results_2 = get_results(run_2)
 results_2
 ```
 
 
-## 3. EQI, Random
+## 3. AEI, Random
 
 ```{r}
 model_3 = generate_model(fun.cosine, des.cosine_random, surr.km,
-                         control.iters=10, control.crit=makeMBOInfillCritAEI())
+                         control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
 
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
-run_3 = run_model(model=model_3, multi_iters=10L)
+run_3 = run_model(model=model_3, multi_iters=multi_iters)
 
 results_3 = get_results(run_3)
 results_3
@@ -157,11 +166,11 @@ results_3
 ```{r}
 
 model_4 = generate_model(fun.cosine, des.cosine_maximin, surr.km, 
-                         control.iters=10, control.crit=makeMBOInfillCritEI())
+                         control.iters=control_iters, control.crit=makeMBOInfillCritEI())
 
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
 
-run_4 = run_model(model=model_4, multi_iters=10L)
+run_4 = run_model(model=model_4, multi_iters=multi_iters)
 
 results_4 = get_results(run_4)
 results_4
@@ -172,12 +181,12 @@ results_4
 
 ```{r}
 
-model_5 = generate_model(fun.cosine, des.cosine_random, surr.km,
-                         control.iters=10, control.crit=makeMBOInfillCritCB())
+model_5 = generate_model(fun.cosine, des.cosine_maximin, surr.km,
+                         control.iters=control_iters, control.crit=makeMBOInfillCritCB())
 
 
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
-run_5 = run_model(model=model_5, multi_iters=10L)
+run_5 = run_model(model=model_5, multi_iters=multi_iters)
 
 results_5 = get_results(run_5)
 results_5
@@ -186,6 +195,19 @@ results_5
 
 
 ## 6. AEI, Maximin
+
+```{r}
+model_6 = generate_model(fun.cosine, des.cosine_maximin, surr.km,
+                         control.iters=20, control.crit=makeMBOInfillCritAEI())
+
+# optional: define multi_iters here. default is c(1L, 2L, 10L)
+run_6 = run_model(model=model_6, multi_iters=20)
+
+results_6 = get_results(run_6)
+results_6
+
+```
+
 
 
 ## 7. EI, Optimum
@@ -219,7 +241,7 @@ model_2 = generate_model(obj.fun, des, surr.km, control.iters=10, control.crit=m
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
 
 run_2 = run_model(obj.fun=obj.fun, design=model_2$des, learner=surr.km, control=model_2$control,
-                  multi_iters = 10L)
+                  multi_iters = multi_iters)
 results_2 = get_results(run_2)
 results_2
 
