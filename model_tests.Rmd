@@ -42,12 +42,12 @@ library(GGally)
 # Cosine Mixture function
 fun.cosine = makeCosineMixtureFunction(1)
 fun.cosine = convertToMinimization(fun.cosine)
-print(autoplot(fun.cosine, show.optimum = TRUE))
+#print(autoplot(fun.cosine, show.optimum = TRUE))
 print(fun.cosine)
 
 # Number of run iterations
-multi_iters = 10L
-control_iters = 10L
+multi_iters = 20L
+control_iters = 20L
 
   ### !!! NOTE: control_iters > multi_iters or things will not plot !!!
 
@@ -60,6 +60,9 @@ des.cosine_random = generateDesign(des.n, par.set = getParamSet(fun.cosine), ran
   # Maximin LHS Cosine mixture 
 des.cosine_maximin = generateDesign(des.n, par.set = getParamSet(fun.cosine), maximinLHS)
 
+  # Optimum LHS Cosine mixture
+des.cosine_optimum = generateDesign(des.n, par.set = getParamSet(fun.cosine), optimumLHS)
+
 # Kriging model (surrogate) constructor
 
 surr.km = makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", control = list(trace = FALSE))
@@ -71,7 +74,7 @@ surr.km = makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", con
 # separately generate obj.fun, surr.km (use makeLearner), des (LHS, random, uniform)
 
 
-generate_model <- function(obj.fun, des, surr.km, control.iters=control.iters, control.crit){
+generate_model <- function(obj.fun, des, des_name, surr.km, control.iters=control.iters, control.crit){
   # Generates model but doesn't run or visualize
   # obj.fun: objective function ex. makeBraninFunction()
   # des required variables:
@@ -89,7 +92,15 @@ generate_model <- function(obj.fun, des, surr.km, control.iters=control.iters, c
   control = setMBOControlTermination(control, iters = control.iters)
   control = setMBOControlInfill(control, crit = control.crit)
   
-  return(list(obj.fun=obj.fun, learner=surr.km, des=des, control=control))
+  control.crit_name = switch(as.character(substitute(control.crit)), 
+                             "makeMBOInfillCritEI"="EI",
+                             "makeMBOInfillCritCB"="CB",
+                             "makeMBOInfillCritAEI"="AEI")
+  
+  model_name = paste(control.crit_name, "+", des_name)
+  
+  return(list(obj.fun=obj.fun, learner=surr.km, des=des, control=control,
+              model_name=model_name))
 }
 
 run_model <- function(model, show.info=FALSE, 
@@ -110,6 +121,10 @@ get_results <- function(run){
 get_best <- function(run){
   return(run$mbo.res$best.ind)
 }
+
+get_name <- function(model){
+  return(model$model_name)
+}
 ```
 
 # Table 1: Kriging+Cosine Mixture Function (1D)
@@ -119,7 +134,7 @@ get_best <- function(run){
 
 ```{r}
 
-model_1 = generate_model(fun.cosine, des.cosine_random, surr.km, 
+model_1 = generate_model(fun.cosine, des.cosine_random, "Random", surr.km, 
                          control.iters=control_iters, control.crit=makeMBOInfillCritEI())
 
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
@@ -135,11 +150,9 @@ results_1
 
 ```{r}
 
-model_2 = generate_model(fun.cosine, des.cosine_random, surr.km,
+model_2 = generate_model(fun.cosine, des.cosine_random, "Random", surr.km,
                          control.iters=control_iters, control.crit=makeMBOInfillCritCB())
 
-
-# optional: define multi_iters here. default is c(1L, 2L, 10L)
 run_2 = run_model(model=model_2, multi_iters=multi_iters)
 
 results_2 = get_results(run_2)
@@ -150,10 +163,9 @@ results_2
 ## 3. AEI, Random
 
 ```{r}
-model_3 = generate_model(fun.cosine, des.cosine_random, surr.km,
+model_3 = generate_model(fun.cosine, des.cosine_random, "Random", surr.km,
                          control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
 
-# optional: define multi_iters here. default is c(1L, 2L, 10L)
 run_3 = run_model(model=model_3, multi_iters=multi_iters)
 
 results_3 = get_results(run_3)
@@ -165,10 +177,8 @@ results_3
 
 ```{r}
 
-model_4 = generate_model(fun.cosine, des.cosine_maximin, surr.km, 
+model_4 = generate_model(fun.cosine, des.cosine_maximin, "Maximin", surr.km, 
                          control.iters=control_iters, control.crit=makeMBOInfillCritEI())
-
-# optional: define multi_iters here. default is c(1L, 2L, 10L)
 
 run_4 = run_model(model=model_4, multi_iters=multi_iters)
 
@@ -181,11 +191,9 @@ results_4
 
 ```{r}
 
-model_5 = generate_model(fun.cosine, des.cosine_maximin, surr.km,
+model_5 = generate_model(fun.cosine, des.cosine_maximin, "Maximin", surr.km,
                          control.iters=control_iters, control.crit=makeMBOInfillCritCB())
 
-
-# optional: define multi_iters here. default is c(1L, 2L, 10L)
 run_5 = run_model(model=model_5, multi_iters=multi_iters)
 
 results_5 = get_results(run_5)
@@ -197,28 +205,105 @@ results_5
 ## 6. AEI, Maximin
 
 ```{r}
-model_6 = generate_model(fun.cosine, des.cosine_maximin, surr.km,
-                         control.iters=20, control.crit=makeMBOInfillCritAEI())
+model_6 = generate_model(fun.cosine, des.cosine_maximin, "Maximin", surr.km,
+                         control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
 
-# optional: define multi_iters here. default is c(1L, 2L, 10L)
-run_6 = run_model(model=model_6, multi_iters=20)
+run_6 = run_model(model=model_6, multi_iters=multi_iters)
 
 results_6 = get_results(run_6)
 results_6
 
 ```
 
-
-
 ## 7. EI, Optimum
+
+```{r}
+model_7 = generate_model(fun.cosine, des.cosine_optimum, "Optimum", surr.km, 
+                         control.iters=control_iters, control.crit=makeMBOInfillCritEI())
+
+run_7 = run_model(model=model_7, multi_iters=multi_iters)
+
+results_7 = get_results(run_7)
+results_7
+
+get_best(run_7)
+
+```
 
 
 ## 8. CB, Optimum
 
+```{r}
+model_8 = generate_model(fun.cosine, des.cosine_optimum, "Optimum", surr.km,
+                         control.iters=control_iters, control.crit=makeMBOInfillCritCB())
+
+run_8 = run_model(model=model_8, multi_iters=multi_iters)
+
+results_8 = get_results(run_8)
+results_8
+
+get_best(run_8)
+```
+
 
 ## 9. AEI, Optimum
 
+```{r}
+model_9 = generate_model(fun.cosine, des.cosine_optimum, "Optimum", surr.km,
+                         control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
 
+run_9 = run_model(model=model_9, multi_iters=multi_iters)
+
+results_9 = get_results(run_9)
+results_9
+
+get_best(run_9)
+```
+
+## Table 1 Results
+
+```{r}
+# rows: model
+# columns: best.ind, train.time, propose.time, se, 
+  # tentative: mean (may remove), ei(may remove this one because it's ei, aei, cb)
+
+# evaluation functions
+get_train.time <- function(results){
+  return(sum(na.omit(results$train.time)))
+}
+
+get_propose.time <- function(results){
+  return(sum(na.omit(results$propose.time)))
+}
+
+get_se <- function(results){
+  return(sum(na.omit(results$se)))
+}
+
+make_table_row <- function(model, run, results) {
+  name <- get_name(model)
+  best <- round(get_best(run), 3)
+  train_time <- round(get_train.time(results), 3)
+  propose_time <- round(get_propose.time(results), 3)
+  se <- round(get_se(results), 3)
+  
+  return(c(name, best, train_time, propose_time, se))
+}
+
+
+models <- list(model_1, model_2, model_3, model_4, model_5, model_6, model_7, model_8, model_9)
+runs <- list(run_1, run_2, run_3, run_4, run_5, run_6, run_7, run_8, run_9)
+results <- list(results_1, results_2, results_3, results_4, results_5, results_6, results_7, results_8, results_9)
+
+# Apply make_table_row to each element of models, runs, and results
+table_rows <- mapply(make_table_row, models, runs, results, SIMPLIFY = FALSE)
+
+# Combine the table rows into a data frame
+table_1 <- as.data.frame(do.call(rbind, table_rows))
+colnames(table_1) <- c("Model", "Best Iteration", "Train Time", "Propose Time", "Sum SE")
+
+table_1
+```
 
 
 # Table 2: Kriging + Branin (2D)
