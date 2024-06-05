@@ -23,6 +23,15 @@ library(GGally)
 # Table 2: Kriging + Branin (2D)
 
 ```{r}
+# Number of run iterations
+multi_iters = 15
+control_iters = 15
+
+  ### !!! NOTE: control_iters > multi_iters or things will not plot !!!
+
+# Random LHS initial design parameters
+des.n = 5
+
 fun.branin = makeBraninFunction()
 print(autoplot(fun.branin, show.optimum = TRUE))
 print(fun.branin)
@@ -31,8 +40,94 @@ des.branin_random = generateDesign(des.n, par.set = getParamSet(fun.branin), ran
 des.branin_maximin = generateDesign(des.n, par.set = getParamSet(fun.branin), maximinLHS)
 des.branin_optimum = generateDesign(des.n, par.set = getParamSet(fun.branin), optimumLHS)
 
+# Kriging model (surrogate) constructor
+
+surr.km = makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", control = list(trace = FALSE))
+
 ```
 
+```{r}
+# separately generate obj.fun, surr.km (use makeLearner), des (LHS, random, uniform)
+
+
+generate_model <- function(obj.fun, des, des_name, surr.km, control.iters=control.iters, control.crit){
+  # Generates model but doesn't run or visualize
+  # obj.fun: objective function ex. makeBraninFunction()
+  # des required variables:
+    # n: number of initial points
+    # fun: initial design function ex. lhs::randomLHS
+  # surr.km: surrogate model ex. makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", control = list(trace = FALSE))
+  
+  # control: infill criteria
+    # control.iters
+    # control.crit: infill criteria ex. makeMBOInfillCritEI()
+  
+  #des = generateDesign(des.n, par.set = getParamSet(obj.fun), des.fun)
+  des$y = apply(des, 1, obj.fun)
+  control = makeMBOControl()
+  control = setMBOControlTermination(control, iters = control.iters)
+  control = setMBOControlInfill(control, crit = control.crit)
+  
+  control.crit_name = switch(as.character(substitute(control.crit)), 
+                             "makeMBOInfillCritEI"="EI",
+                             "makeMBOInfillCritCB"="CB",
+                             "makeMBOInfillCritAEI"="AEI",
+                             "makeMBOInfillCritStandardError"="SE")
+  
+  model_name = paste(control.crit_name, "+", des_name)
+  
+  return(list(obj.fun=obj.fun, learner=surr.km, des=des, control=control,
+              model_name=model_name))
+}
+
+run_model <- function(model, show.info=FALSE, multi_iters= multi_iters) {
+  # Runs model for _ iterations and displays plots
+  
+  run = exampleRun(fun=model$obj.fun, design=model$des, learner=model$learner, control=model$control,
+                   show.info=show.info)
+  plotExampleRun(run, iters=multi_iters)
+  
+  return(run)
+} 
+
+get_results <- function(run){
+  return(as.data.frame(run$mbo.res$opt.path))
+}
+
+get_best <- function(run){
+  return(run$mbo.res$best.ind)
+}
+
+get_name <- function(model){
+  return(model$model_name)
+}
+
+# evaluation functions
+get_train.time <- function(results){
+  return(sum(na.omit(results$train.time)))
+}
+
+get_propose.time <- function(results){
+  return(sum(na.omit(results$propose.time)))
+}
+
+get_se <- function(results){
+  return(sum(na.omit(results$se)**2))
+}
+
+make_table_row <- function(model, run, results) {
+  name <- get_name(model)
+  best <- round(get_best(run), 3)
+  train_time <- round(get_train.time(results), 3)
+  propose_time <- round(get_propose.time(results), 3)
+  se <- round(get_se(results), 3)
+  
+  return(c(name, best, train_time, propose_time, se))
+}
+
+
+
+```
 
 ## 10. EI, Random
 
