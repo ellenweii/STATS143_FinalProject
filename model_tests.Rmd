@@ -95,7 +95,8 @@ generate_model <- function(obj.fun, des, des_name, surr.km, control.iters=contro
   control.crit_name = switch(as.character(substitute(control.crit)), 
                              "makeMBOInfillCritEI"="EI",
                              "makeMBOInfillCritCB"="CB",
-                             "makeMBOInfillCritAEI"="AEI")
+                             "makeMBOInfillCritAEI"="AEI",
+                             "makeMBOInfillCritStandardError"="SE")
   
   model_name = paste(control.crit_name, "+", des_name)
   
@@ -277,7 +278,7 @@ get_propose.time <- function(results){
 }
 
 get_se <- function(results){
-  return(sum(na.omit(results$se)))
+  return(sum(na.omit(results$se)**2))
 }
 
 make_table_row <- function(model, run, results) {
@@ -307,8 +308,7 @@ table_1
 
 
 # Table 2: Kriging + Branin (2D)
-
-## . EI, Random
+## OLD EI, Random
 
 ```{r}
 obj.fun = makeBraninFunction()
@@ -321,6 +321,8 @@ des = generateDesign(des.n, par.set = getParamSet(obj.fun), des.fun)
 
 surr.km = makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", control = list(trace = FALSE))
 
+surr.km = makeLearner("regr.km", predict.type="se")
+
 model_2 = generate_model(obj.fun, des, surr.km, control.iters=10, control.crit=makeMBOInfillCritEI())
 
 # optional: define multi_iters here. default is c(1L, 2L, 10L)
@@ -332,3 +334,165 @@ results_2
 
 run_2$mbo.res$best.ind
 ```
+
+
+```{r}
+fun.branin = makeBraninFunction()
+print(autoplot(fun.branin, show.optimum = TRUE))
+print(fun.branin)
+
+des.branin_random = generateDesign(des.n, par.set = getParamSet(fun.branin), randomLHS)
+des.branin_maximin = generateDesign(des.n, par.set = getParamSet(fun.branin), maximinLHS)
+des.branin_optimum = generateDesign(des.n, par.set = getParamSet(fun.branin), optimumLHS)
+
+```
+
+
+## 10. EI, Random
+
+```{r}
+
+model_10 = generate_model(fun.branin, des.branin_random, "Random", surr.km, 
+                         control.iters=control_iters, control.crit=makeMBOInfillCritEI())
+
+# optional: define multi_iters here. default is c(1L, 2L, 10L)
+
+run_10 = run_model(model=model_10, multi_iters=multi_iters)
+
+results_10 = get_results(run_10)
+results_10
+
+```
+
+## 11. CB, Random
+
+```{r}
+
+model_11 = generate_model(fun.branin, des.branin_random, "Random", surr.km,
+                         control.iters=control_iters, control.crit=makeMBOInfillCritCB())
+
+run_11 = run_model(model=model_11, multi_iters=multi_iters)
+
+results_11 = get_results(run_11)
+results_11
+```
+
+
+## 12. Standard Error, Random
+
+```{r}
+model_12 = generate_model(fun.branin, des.branin_random, "Random", surr.km,
+                         control.iters=control_iters, control.crit=makeMBOInfillCritStandardError())
+
+run_12 = run_model(model=model_12, multi_iters=multi_iters)
+
+results_12 = get_results(run_12)
+results_12
+
+```
+
+## 13. EI, Maximin
+
+```{r}
+
+model_13 = generate_model(fun.branin, des.branin_maximin, "Maximin", surr.km, 
+                         control.iters=control_iters, control.crit=makeMBOInfillCritEI())
+
+run_13 = suppressMessages(run_model(model=model_13, multi_iters=multi_iters))
+
+results_13 = get_results(run_13)
+results_13
+
+```
+
+## 14. CB, Maximin
+
+```{r}
+
+# model_14 = generate_model(fun.branin, des.branin_maximin, "Maximin", surr.km,
+#                          control.iters=control_iters, control.crit=makeMBOInfillCritCB())
+# 
+# run_14 = run_model(model=model_14, multi_iters=multi_iters)
+# 
+# results_14 = get_results(run_14)
+# results_14
+
+```
+
+
+## 15. AEI, Maximin
+
+```{r}
+# model_15 = generate_model(fun.branin, des.branin_maximin, "Maximin", surr.km,
+#                          control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
+# 
+# run_15 = run_model(model=model_15, multi_iters=multi_iters)
+# 
+# results_15 = get_results(run_15)
+# results_15
+
+```
+
+## 16. EI, Optimum
+
+```{r}
+model_16 = generate_model(fun.branin, des.branin_optimum, "Optimum", surr.km, 
+                         control.iters=control_iters, control.crit=makeMBOInfillCritEI())
+
+run_16 = run_model(model=model_16, multi_iters=multi_iters)
+
+results_16 = get_results(run_16)
+results_16
+
+get_best(run_16)
+
+```
+
+
+## 17. CB, Optimum
+
+```{r}
+# model_17 = generate_model(fun.branin, des.branin_optimum, "Optimum", surr.km,
+#                          control.iters=control_iters, control.crit=makeMBOInfillCritCB())
+# 
+# run_17 = run_model(model=model_17, multi_iters=multi_iters)
+# 
+# results_17 = get_results(run_17)
+# results_17
+# 
+# get_best(run_17)
+```
+
+
+## 18. AEI, Optimum
+
+```{r}
+# model_18 = generate_model(fun.branin, des.branin_optimum, "Optimum", surr.km,
+#                          control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
+# 
+# run_18 = run_model(model=model_18, multi_iters=multi_iters)
+# 
+# results_18 = get_results(run_18)
+# results_18
+# 
+# get_best(run_18)
+```
+
+
+## Table 2
+
+```{r}
+models <- list(model_10, model_11, model_12, model_13, model_16)
+runs <- list(run_10, run_11, run_12, run_13, run_16)
+results <- list(results_10, results_12, results_13, results_16)
+
+# Apply make_table_row to each element of models, runs, and results
+table_rows <- mapply(make_table_row, models, runs, results, SIMPLIFY = FALSE)
+
+# Combine the table rows into a data frame
+table_2 <- as.data.frame(do.call(rbind, table_rows))
+colnames(table_2) <- c("Model", "Best Iteration", "Train Time", "Propose Time", "Sum SE")
+
+table_2
+```
+
