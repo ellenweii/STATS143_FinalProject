@@ -37,7 +37,7 @@ des.branin_optimum = generateDesign(des.n, par.set = getParamSet(fun.branin), op
 des.branin_maximin = generateDesign(des.n, par.set = getParamSet(fun.branin), maximinLHS)
 
 # Random Forest model (surrogate) constructor
-surr.rf = makeLearner("regr.randomForest", predict.type = "se", control = list(trace = FALSE), ntree = 500, mtry = 2)
+surr.rf = makeLearner("regr.randomForest", predict.type = "se", ntree = 500, mtry = 2)
 ```
 
 ## Generate and Run Functions
@@ -80,6 +80,30 @@ get_best <- function(run){
 get_name <- function(model){
   return(model$model_name)
 }
+
+# evaluation functions
+get_train.time <- function(results){
+  return(sum(na.omit(results$train.time)))
+}
+
+get_propose.time <- function(results){
+  return(sum(na.omit(results$propose.time)))
+}
+
+get_se <- function(results){
+  return(sum(na.omit(results$se)**2))
+}
+
+make_table_row <- function(model, run, results) {
+  name <- get_name(model)
+  best <- round(get_best(run), 3)
+  train_time <- round(get_train.time(results), 3)
+  propose_time <- round(get_propose.time(results), 3)
+  se <- round(get_se(results), 3)
+  
+  return(c(name, best, train_time, propose_time, se))
+}
+
 ```
 
 ## 19. EI, Random
@@ -113,15 +137,15 @@ results_20
 
 ```{r}
 # Generate model 21
-model_21 = generate_model(fun.branin, des.branin_random, "Random", surr.rf, 
-                          control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
+#model_21 = generate_model(fun.branin, des.branin_random, "Random", surr.rf, 
+#                          control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
 
 # Run model 21
-run_21 = run_model(model=model_21, multi_iters=multi_iters)
+#run_21 = run_model(model=model_21, multi_iters=multi_iters)
 
 # Get results for model 21
-results_21 = get_results(run_21)
-results_21
+#results_21 = get_results(run_21)
+#results_21
 ```
 
 ## 22. EI, Optimum
@@ -158,15 +182,15 @@ results_23
 
 ```{r}
 # Generate model 24
-model_24 = generate_model(fun.branin, des.branin_optimum, "Optimum", surr.rf, 
-                          control.iters=control_iters, control.crit=makeMBOInfillCritEQI())
+#model_24 = generate_model(fun.branin, des.branin_optimum, "Optimum", surr.rf, 
+#                          control.iters=control_iters, control.crit=makeMBOInfillCritEQI())
 
 # Run model 24
-run_24 = run_model(model=model_24, multi_iters=multi_iters)
+#run_24 = run_model(model=model_24, multi_iters=multi_iters)
 
 # Get results for model 24
-results_24 = get_results(run_24)
-results_24
+#results_24 = get_results(run_24)
+#results_24
 ```
 
 ## 25. EI, Maximin
@@ -203,15 +227,15 @@ results_26
 
 ```{r}
 # Generate model 27
-model_27 = generate_model(fun.branin, des.branin_maximin, "Maximin", surr.rf, 
-                          control.iters=control_iters, control.crit=makeMBOInfillCritEQI())
+#model_27 = generate_model(fun.branin, des.branin_maximin, "Maximin", surr.rf, 
+#                          control.iters=control_iters, control.crit=makeMBOInfillCritEQI())
 
 # Run model 27
-run_27 = run_model(model=model_27, multi_iters=multi_iters)
+#run_27 = run_model(model=model_27, multi_iters=multi_iters)
 
 # Get results for model 27
-results_27 = get_results(run_27)
-results_27
+#results_27 = get_results(run_27)
+#results_27
 ```
 
 ## Table 3: Random Forest + Branin (2D)

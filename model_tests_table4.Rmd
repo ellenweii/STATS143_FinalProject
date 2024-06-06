@@ -107,6 +107,29 @@ get_best <- function(run){
 get_name <- function(model){
   return(model$model_name)
 }
+
+# evaluation functions
+get_train.time <- function(results){
+  return(sum(na.omit(results$train.time)))
+}
+
+get_propose.time <- function(results){
+  return(sum(na.omit(results$propose.time)))
+}
+
+get_se <- function(results){
+  return(sum(na.omit(results$se)**2))
+}
+
+make_table_row <- function(model, run, results) {
+  name <- get_name(model)
+  best <- round(get_best(run), 3)
+  train_time <- round(get_train.time(results), 3)
+  propose_time <- round(get_propose.time(results), 3)
+  se <- round(get_se(results), 3)
+  
+  return(c(name, best, train_time, propose_time, se))
+}
 ```
 
 # Model 28: EI, Random
