@@ -1,0 +1,208 @@
+---
+title: "Table4Models"
+output: html_document
+date: "2024-06-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(mlrMBO)
+library(lhs)
+library(smoof)
+library(ggplot2)
+library(DiceKriging)
+library(gridExtra)
+library(GGally)
+```
+
+## General Function and Parameters
+
+```{r}
+# Hartmann 6D function
+fun.hartmann = makeHartmannFunction(6)
+
+# Number of run iterations
+multi_iters = 15
+control_iters = 15
+
+# Initial design size
+des.n = 10
+
+# Generate initial designs
+des.hartmann_random = generateDesign(des.n, par.set = getParamSet(fun.hartmann), randomLHS)
+des.hartmann_optimum = generateDesign(des.n, par.set = getParamSet(fun.hartmann), optimumLHS)
+des.hartmann_maximin = generateDesign(des.n, par.set = getParamSet(fun.hartmann), maximinLHS)
+
+# Kriging model (surrogate) constructor
+surr.km = makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", control = list(trace = FALSE))
+```
+
+## Generate and Run
+
+```{r}
+generate_model <- function(obj.fun, des, des_name, surr.km, control.iters=control_iters, control.crit){
+  des$y = apply(des, 1, obj.fun)
+  
+  # Print the design after applying the objective function
+  print(paste("Design after applying objective function (", des_name, "):", sep=""))
+  print(des)
+  
+  # Ensure no missing values in the design
+  if(any(is.na(des))) {
+    stop("Design contains missing values after applying the objective function.")
+  }
+  
+  control = makeMBOControl()
+  control = setMBOControlTermination(control, iters = control.iters)
+  control = setMBOControlInfill(control, crit = control.crit)
+  
+  control.crit_name = switch(as.character(substitute(control.crit)), 
+                             "makeMBOInfillCritEI"="EI",
+                             "makeMBOInfillCritCB"="CB",
+                             "makeMBOInfillCritAEI"="AEI",
+                             "makeMBOInfillCritStandardError"="SE")
+  
+  model_name = paste(control.crit_name, "+", des_name)
+  
+  return(list(obj.fun=obj.fun, learner=surr.km, des=des, control=control,
+              model_name=model_name))
+}
+
+run_model <- function(model, show.info=FALSE) {
+  # Check the inputs to mbo
+  print("Inputs to mbo:")
+  print(list(fun = model$obj.fun, design = model$des, learner = model$learner, control = model$control))
+  
+  run = tryCatch({
+    mbo(fun=model$obj.fun, design=model$des, learner=model$learner, control=model$control, show.info=show.info)
+  }, error = function(e) {
+    print("Error in mbo:")
+    print(e)
+    return(NULL)
+  })
+  
+  if (is.null(run)) {
+    stop("mbo returned NULL due to an error.")
+  }
+  
+  # Check if opt.path is NULL
+  if (is.null(run$opt.path)) {
+    stop("Optimization path (opt.path) is NULL.")
+  }
+  
+  return(run)
+}
+
+get_results <- function(run){
+  return(as.data.frame(run$opt.path))
+}
+
+get_best <- function(run){
+  return(run$best.ind)
+}
+
+get_name <- function(model){
+  return(model$model_name)
+}
+```
+
+# Model 28: EI, Random
+```{r}
+model_28 = generate_model(fun.hartmann, des.hartmann_random, "Random", surr.km, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritEI())
+run_28 = run_model(model=model_28, show.info=TRUE)
+results_28 = get_results(run_28)
+print(results_28)
+```
+
+# Model 29: CB, Random
+```{r}
+model_29 = generate_model(fun.hartmann, des.hartmann_random, "Random", surr.km, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritCB())
+run_29 = run_model(model=model_29, show.info=TRUE)
+results_29 = get_results(run_29)
+print(results_29)
+```
+
+# Model 30: AEI, Random
+```{r}
+model_30 = generate_model(fun.hartmann, des.hartmann_random, "Random", surr.km, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
+run_30 = run_model(model=model_30, show.info=TRUE)
+results_30 = get_results(run_30)
+print(results_30)
+```
+
+# Model 31: EI, Maximin
+```{r}
+model_31 = generate_model(fun.hartmann, des.hartmann_maximin, "Maximin", surr.km, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritEI())
+run_31 = run_model(model=model_31, show.info=TRUE)
+results_31 = get_results(run_31)
+print(results_31)
+```
+
+# Model 32: CB, Maximin
+```{r}
+model_32 = generate_model(fun.hartmann, des.hartmann_maximin, "Maximin", surr.km, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritCB())
+run_32 = run_model(model=model_32, show.info=TRUE)
+results_32 = get_results(run_32)
+print(results_32)
+```
+
+# Model 33: AEI, Maximin
+```{r}
+model_33 = generate_model(fun.hartmann, des.hartmann_maximin, "Maximin", surr.km, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
+run_33 = run_model(model=model_33, show.info=TRUE)
+results_33 = get_results(run_33)
+print(results_33)
+```
+
+# Model 34: EI, Optimum
+```{r}
+model_34 = generate_model(fun.hartmann, des.hartmann_optimum, "Optimum", surr.km, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritEI())
+run_34 = run_model(model=model_34, show.info=TRUE)
+results_34 = get_results(run_34)
+print(results_34)
+```
+
+# Model 35: CB, Optimum
+```{r}
+model_35 = generate_model(fun.hartmann, des.hartmann_optimum, "Optimum", surr.km, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritCB())
+run_35 = run_model(model=model_35, show.info=TRUE)
+results_35 = get_results(run_35)
+print(results_35)
+```
+
+# Model 36: AEI, Optimum
+```{r}
+model_36 = generate_model(fun.hartmann, des.hartmann_optimum, "Optimum", surr.km, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
+run_36 = run_model(model=model_36, show.info=TRUE)
+results_36 = get_results(run_36)
+print(results_36)
+```
+
+## Table 4: Kirging + Hartmann (6D)
+
+```{r}
+models <- list(model_28, model_29, model_30, model_31, model_32, model_33, model_34, model_35, model_36)
+runs <- list(run_28, run_29, run_30, run_31, run_32, run_33, run_34, run_35, run_36)
+results <- list(results_28, results_29, results_30, results_31, results_32, results_33, results_34, results_35, results_36)
+
+# Apply make_table_row to each element of models, runs, and results
+table_rows <- mapply(make_table_row, models, runs, results, SIMPLIFY = FALSE)
+
+# Combine the table rows into a data frame
+table_4 <- as.data.frame(do.call(rbind, table_rows))
+colnames(table_4) <- c("Model", "Best Iteration", "Train Time", "Propose Time", "Sum SE")
+
+table_4
+```
