@@ -1,0 +1,241 @@
+---
+title: "Table3Models"
+output: html_document
+date: "2024-06-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(mlrMBO)
+library(lhs)
+library(smoof)
+library(ggplot2)
+library(DiceKriging)
+library(gridExtra)
+library(GGally)
+```
+
+## General Function and Parameters
+
+```{r}
+# Branin function (already minimized by default)
+fun.branin = makeBraninFunction()
+
+# Number of run iterations
+multi_iters = 15
+control_iters = 15
+
+# Random LHS initial design parameters
+des.n = 5
+
+# Generate initial designs
+des.branin_random = generateDesign(des.n, par.set = getParamSet(fun.branin), randomLHS)
+des.branin_optimum = generateDesign(des.n, par.set = getParamSet(fun.branin), optimumLHS)
+des.branin_maximin = generateDesign(des.n, par.set = getParamSet(fun.branin), maximinLHS)
+
+# Random Forest model (surrogate) constructor
+surr.rf = makeLearner("regr.randomForest", predict.type = "se", control = list(trace = FALSE), ntree = 500, mtry = 2)
+```
+
+## Generate and Run Functions
+
+```{r}
+generate_model <- function(obj.fun, des, des_name, surr.km, control.iters=control_iters, control.crit){
+  des$y = apply(des, 1, obj.fun)
+  control = makeMBOControl()
+  control = setMBOControlTermination(control, iters = control.iters)
+  control = setMBOControlInfill(control, crit = control.crit)
+  
+  control.crit_name = switch(as.character(substitute(control.crit)), 
+                             "makeMBOInfillCritEI"="EI",
+                             "makeMBOInfillCritCB"="CB",
+                             "makeMBOInfillCritAEI"="AEI",
+                             "makeMBOInfillCritStandardError"="SE")
+  
+  model_name = paste(control.crit_name, "+", des_name)
+  
+  return(list(obj.fun=obj.fun, learner=surr.km, des=des, control=control,
+              model_name=model_name))
+}
+
+run_model <- function(model, show.info=FALSE, multi_iters= multi_iters) {
+  run = exampleRun(fun=model$obj.fun, design=model$des, learner=model$learner, control=model$control,
+                   show.info=show.info)
+  plotExampleRun(run, iters=multi_iters)
+  
+  return(run)
+}
+
+get_results <- function(run){
+  return(as.data.frame(run$mbo.res$opt.path))
+}
+
+get_best <- function(run){
+  return(run$mbo.res$best.ind)
+}
+
+get_name <- function(model){
+  return(model$model_name)
+}
+```
+
+## 19. EI, Random
+
+```{r}
+model_19 = generate_model(fun.branin, des.branin_random, "Random", surr.rf, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritEI())
+
+run_19 = run_model(model=model_19, multi_iters=multi_iters)
+
+results_19 = get_results(run_19)
+results_19
+```
+
+## 20. CB, Random
+
+```{r}
+# Generate model 20
+model_20 = generate_model(fun.branin, des.branin_random, "Random", surr.rf, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritCB())
+
+# Run model 20
+run_20 = run_model(model=model_20, multi_iters=multi_iters)
+
+# Get results for model 20
+results_20 = get_results(run_20)
+results_20
+```
+
+## 21. AEI, Random
+
+```{r}
+# Generate model 21
+model_21 = generate_model(fun.branin, des.branin_random, "Random", surr.rf, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
+
+# Run model 21
+run_21 = run_model(model=model_21, multi_iters=multi_iters)
+
+# Get results for model 21
+results_21 = get_results(run_21)
+results_21
+```
+
+## 22. EI, Optimum
+
+```{r}
+# Generate model 22
+model_22 = generate_model(fun.branin, des.branin_optimum, "Optimum", surr.rf, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritEI())
+
+# Run model 22
+run_22 = run_model(model=model_22, multi_iters=multi_iters)
+
+# Get results for model 22
+results_22 = get_results(run_22)
+results_22
+```
+
+## 23. CB, Optimum
+
+```{r}
+# Generate model 23
+model_23 = generate_model(fun.branin, des.branin_optimum, "Optimum", surr.rf, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritCB())
+
+# Run model 23
+run_23 = run_model(model=model_23, multi_iters=multi_iters)
+
+# Get results for model 23
+results_23 = get_results(run_23)
+results_23
+```
+
+## 24. EQI, Optimum
+
+```{r}
+# Generate model 24
+model_24 = generate_model(fun.branin, des.branin_optimum, "Optimum", surr.rf, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritEQI())
+
+# Run model 24
+run_24 = run_model(model=model_24, multi_iters=multi_iters)
+
+# Get results for model 24
+results_24 = get_results(run_24)
+results_24
+```
+
+## 25. EI, Maximin
+
+```{r}
+# Generate model 25
+model_25 = generate_model(fun.branin, des.branin_maximin, "Maximin", surr.rf, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritEI())
+
+# Run model 25
+run_25 = run_model(model=model_25, multi_iters=multi_iters)
+
+# Get results for model 25
+results_25 = get_results(run_25)
+results_25
+```
+
+## 26. CB, Maximin
+
+```{r}
+# Generate model 26
+model_26 = generate_model(fun.branin, des.branin_maximin, "Maximin", surr.rf, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritCB())
+
+# Run model 26
+run_26 = run_model(model=model_26, multi_iters=multi_iters)
+
+# Get results for model 26
+results_26 = get_results(run_26)
+results_26
+```
+
+## 27. EQI, Maximin
+
+```{r}
+# Generate model 27
+model_27 = generate_model(fun.branin, des.branin_maximin, "Maximin", surr.rf, 
+                          control.iters=control_iters, control.crit=makeMBOInfillCritEQI())
+
+# Run model 27
+run_27 = run_model(model=model_27, multi_iters=multi_iters)
+
+# Get results for model 27
+results_27 = get_results(run_27)
+results_27
+```
+
+## Table 3: Random Forest + Branin (2D)
+
+```{r}
+models <- list(model_19, model_20, model_22, model_23, model_25, model_26)
+runs <- list(run_19, run_20, run_22, run_23, run_25, run_26)
+results <- list(results_19, results_20, results_22, results_23, results_25, results_26)
+
+# Apply make_table_row to each element of models, runs, and results
+table_rows <- mapply(make_table_row, models, runs, results, SIMPLIFY = FALSE)
+
+# Combine the table rows into a data frame
+table_3 <- as.data.frame(do.call(rbind, table_rows))
+colnames(table_3) <- c("Model", "Best Iteration", "Train Time", "Propose Time", "Sum SE")
+
+table_3
+```
+
+
+
+
+
+
+
+
+
