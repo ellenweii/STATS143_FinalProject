@@ -1,0 +1,75 @@
+---
+title: "model_tests_heatmaps"
+output: html_document
+date: "2024-06-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Imports
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+```
+
+## Combined Table
+
+```{r}
+# EDIT THIS LINE TO READ IN "combined_table.csv" FILE TO YOUR WORKING DIRECTORY
+
+combined_table <- read.csv("/Users/young/Desktop/combined_table.csv")
+```
+
+```{r}
+# Separate the Model column into Infill Criteria and Initial Design
+combined_table <- combined_table %>%
+  mutate(
+    Infill_Criteria = sub(" \\+.*", "", Model),
+    Initial_Design = sub(".*\\+ ", "", Model)
+  )
+```
+
+## Heatmaps
+
+```{r}
+# Pivot the data to a long format for heatmap
+heatmap_data <- combined_table %>%
+  select(Table, Infill_Criteria, Initial_Design, Best.Iteration, Train.Time, Propose.Time, Sum.SE) %>%
+  melt(id.vars = c("Table", "Infill_Criteria", "Initial_Design"))
+
+# Heatmap for Best Iteration
+ggplot(heatmap_data[heatmap_data$variable == "Best.Iteration",], aes(x=Initial_Design, y=Infill_Criteria, fill=value)) +
+  geom_tile(color='white') +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(title="Heatmap of Best Iteration", x="Initial Design", y="Infill Criteria", fill="Best Iteration") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~ Table)
+
+# Heatmap for Train Time
+ggplot(heatmap_data[heatmap_data$variable == "Train.Time",], aes(x=Initial_Design, y=Infill_Criteria, fill=value)) +
+  geom_tile(color='white') +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(title="Heatmap of Train Time", x="Initial Design", y="Infill Criteria", fill="Train Time") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~ Table)
+
+# Heatmap for Propose Time
+ggplot(heatmap_data[heatmap_data$variable == "Propose.Time",], aes(x=Initial_Design, y=Infill_Criteria, fill=value)) +
+  geom_tile(color='white') +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(title="Heatmap of Propose Time", x="Initial Design", y="Infill Criteria", fill="Propose Time") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~ Table)
+
+# Heatmap for Sum SE
+ggplot(heatmap_data[heatmap_data$variable == "Sum.SE",], aes(x=Initial_Design, y=Infill_Criteria, fill=value)) +
+  geom_tile(color='white') +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(title="Heatmap of Sum SE", x="Initial Design", y="Infill Criteria", fill="Sum SE") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~ Table)
+```
