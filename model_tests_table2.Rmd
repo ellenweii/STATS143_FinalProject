@@ -233,22 +233,22 @@ get_best(run_16)
 ## 17. CB, Optimum
 
 ```{r}
-# model_17 = generate_model(fun.branin, des.branin_optimum, "Optimum", surr.km,
+# model_17 = generate_model(fun.branin, des.branin_optimum, "optimum", surr.km,
 #                          control.iters=control_iters, control.crit=makeMBOInfillCritCB())
 # 
 # run_17 = run_model(model=model_17, multi_iters=multi_iters)
 # 
 # results_17 = get_results(run_17)
 # results_17
-# 
-# get_best(run_17)
+# ERROR
+
 ```
 
 
 ## 18. AEI, Optimum
 
 ```{r}
-# model_18 = generate_model(fun.branin, des.branin_optimum, "Optimum", surr.km,
+# model_18 = generate_model(fun.branin, des.branin_optimum, "optimum", surr.km,
 #                          control.iters=control_iters, control.crit=makeMBOInfillCritAEI())
 # 
 # run_18 = run_model(model=model_18, multi_iters=multi_iters)
@@ -257,6 +257,8 @@ get_best(run_16)
 # results_18
 # 
 # get_best(run_18)
+
+# ERROR: design and newdata have different number of columns
 ```
 
 
