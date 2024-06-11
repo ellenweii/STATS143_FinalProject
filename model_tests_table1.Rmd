@@ -86,7 +86,6 @@ generate_model <- function(obj.fun, des, des_name, surr.km, control.iters=contro
     # control.iters
     # control.crit: infill criteria ex. makeMBOInfillCritEI()
   
-  #des = generateDesign(des.n, par.set = getParamSet(obj.fun), des.fun)
   des$y = apply(des, 1, obj.fun)
   control = makeMBOControl()
   control = setMBOControlTermination(control, iters = control.iters)
@@ -264,8 +263,7 @@ get_best(run_9)
 
 ```{r}
 # rows: model
-# columns: best.ind, train.time, propose.time, se, 
-  # tentative: mean (may remove), ei(may remove this one because it's ei, aei, cb)
+# columns: best.ind, train.time, propose.time, se
 
 # evaluation functions
 get_train.time <- function(results){
